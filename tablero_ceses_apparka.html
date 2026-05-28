@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tablero de Ceses · Apparka</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --navy: #1B1462;
+    --navy-light: #2A1F8F;
+    --fuchsia: #ED2579;
+    --purple: #8A34B4;
+    --bg: #F4F3F8;
+    --card: #FFFFFF;
+    --text: #1a1a2e;
+    --muted: #6B6B8A;
+    --border: rgba(27,20,98,0.10);
+    --success: #1D9E75;
+    --warn: #E49B0F;
+    --danger: #E24B4A;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Poppins', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* HEADER */
+  .header {
+    background: var(--navy);
+    padding: 0 28px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-badge { background: var(--fuchsia); border-radius: 8px; padding: 4px 12px; font-size: 13px; font-weight: 600; color: white; letter-spacing: 0.5px; }
+  .header-title { color: white; font-size: 14px; font-weight: 500; opacity: 0.9; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .last-update { font-size: 11px; color: rgba(255,255,255,0.5); }
+  .reload-btn { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 6px; padding: 5px 12px; font-size: 12px; font-family: 'Poppins', sans-serif; cursor: pointer; transition: all 0.2s; }
+  .reload-btn:hover { background: rgba(255,255,255,0.18); }
+
+  /* FILTERS */
+  .filters-bar {
+    background: white;
+    border-bottom: 1px solid var(--border);
+    padding: 10px 28px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .filter-label { font-size: 11px; color: var(--muted); font-weight: 500; margin-right: 4px; }
+  select {
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 28px 5px 12px;
+    font-size: 12px;
+    font-family: 'Poppins', sans-serif;
+    color: var(--text);
+    background: var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236B6B8A'/%3E%3C/svg%3E") no-repeat right 10px center;
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    min-width: 130px;
+  }
+  select:focus { outline: none; border-color: var(--navy); }
+  .clear-btn { margin-left: auto; font-size: 11px; color: var(--fuchsia); cursor: pointer; font-weight: 500; background: none; border: none; font-family: 'Poppins', sans-serif; }
+  .clear-btn:hover { text-decoration: underline; }
+  .results-count { font-size: 11px; color: var(--muted); background: var(--bg); padding: 4px 10px; border-radius: 10px; }
+
+  /* MAIN */
+  .main { padding: 20px 28px; max-width: 1400px; margin: 0 auto; }
+
+  /* INSIGHT BAR */
+  .insight-bar {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+    border-radius: 12px;
+    padding: 14px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .insight-title { font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+  .insight-items { display: flex; gap: 20px; flex-wrap: wrap; flex: 1; }
+  .insight-item { display: flex; align-items: flex-start; gap: 8px; }
+  .insight-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--fuchsia); margin-top: 5px; flex-shrink: 0; }
+  .insight-text { font-size: 12px; color: rgba(255,255,255,0.85); line-height: 1.5; }
+  .insight-text strong { color: white; }
+
+  /* KPI GRID */
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 16px; }
+  .kpi-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+    transition: transform 0.15s;
+  }
+  .kpi-card:hover { transform: translateY(-2px); }
+  .kpi-card.danger { border-left-color: var(--fuchsia); }
+  .kpi-card.warn { border-left-color: var(--warn); }
+  .kpi-card.ok { border-left-color: var(--success); }
+  .kpi-card.info { border-left-color: var(--purple); }
+  .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .kpi-value { font-size: 26px; font-weight: 600; color: var(--text); line-height: 1; margin-bottom: 4px; }
+  .kpi-sub { font-size: 11px; color: var(--muted); }
+  .kpi-delta { font-size: 11px; margin-top: 4px; }
+  .delta-bad { color: var(--danger); }
+  .delta-ok { color: var(--success); }
+
+  /* CHARTS GRID */
+  .charts-row { display: grid; grid-template-columns: 1.2fr 1fr 0.9fr; gap: 12px; margin-bottom: 16px; }
+  .chart-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--border);
+  }
+  .chart-card-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .badge { font-size: 9px; background: var(--fuchsia); color: white; padding: 2px 7px; border-radius: 8px; font-weight: 500; }
+  .badge-purple { background: var(--purple); }
+  .badge-navy { background: var(--navy); }
+  canvas { max-height: 200px; }
+
+  /* BOTTOM ROW */
+  .bottom-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+
+  /* CONTROLLABLE PIE */
+  .metric-split { display: flex; gap: 16px; margin-bottom: 12px; }
+  .metric-split-item { flex: 1; text-align: center; }
+  .metric-split-val { font-size: 28px; font-weight: 600; }
+  .metric-split-lbl { font-size: 10px; color: var(--muted); }
+  .progress-bar { height: 8px; border-radius: 4px; background: #EEE; overflow: hidden; margin-bottom: 10px; }
+  .progress-fill { height: 100%; border-radius: 4px; background: var(--fuchsia); transition: width 0.6s ease; }
+
+  /* SEMAFORO TABLE */
+  .sem-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .sem-table th { font-size: 10px; color: var(--muted); text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); font-weight: 500; }
+  .sem-table td { padding: 6px 4px; border-bottom: 1px solid var(--border); color: var(--text); }
+  .pill { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+  .pill-red { background: #FFEBEB; color: #C0392B; }
+  .pill-amber { background: #FFF3E0; color: #D35400; }
+  .pill-green { background: #E8F5E9; color: #27AE60; }
+
+  /* EXPERIENCIA INICIAL */
+  .exp-grid { display: grid; grid-template-columns: 1fr; gap: 8px; }
+  .exp-row { display: flex; align-items: center; gap: 8px; }
+  .exp-label { font-size: 10px; color: var(--muted); width: 140px; flex-shrink: 0; }
+  .exp-track { flex: 1; height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+  .exp-fill { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
+  .exp-val { font-size: 11px; font-weight: 600; color: var(--text); width: 36px; text-align: right; }
+
+  /* QUALITATIVE FEED */
+  .quotes-section { background: var(--card); border-radius: 12px; border: 1px solid var(--border); padding: 16px; }
+  .quotes-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .quote-item { border-left: 3px solid var(--fuchsia); padding: 8px 12px; margin-bottom: 8px; background: var(--bg); border-radius: 0 8px 8px 0; }
+  .quote-text { font-size: 12px; color: var(--text); font-style: italic; margin-bottom: 4px; line-height: 1.5; }
+  .quote-meta { font-size: 10px; color: var(--muted); }
+  .quote-motivo { font-size: 10px; background: var(--navy); color: white; padding: 1px 7px; border-radius: 8px; margin-right: 6px; }
+
+  /* LOADING */
+  .loading-overlay { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px; color: var(--muted); }
+  .spinner { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--fuchsia); border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-msg { background: #FFEBEB; color: #C0392B; padding: 12px 16px; border-radius: 8px; font-size: 13px; margin: 16px 0; }
+
+  /* LIDERAZGO SECTION */
+  .liderazgo-section {
+    background: var(--card);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--fuchsia);
+    padding: 16px;
+    margin-bottom: 16px;
+  }
+  .liderazgo-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .liderazgo-kpis { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .lid-kpi { background: var(--bg); border-radius: 10px; padding: 10px 14px; flex: 1; min-width: 100px; }
+  .lid-kpi-val { font-size: 22px; font-weight: 600; color: var(--fuchsia); }
+  .lid-kpi-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .liderazgo-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 16px; }
+  .lid-ranking { }
+  .lid-rank-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 0; border-bottom: 1px solid var(--border);
+  }
+  .lid-rank-num { width: 20px; font-size: 11px; font-weight: 600; color: var(--muted); flex-shrink: 0; text-align: center; }
+  .lid-rank-num.top { color: var(--fuchsia); }
+  .lid-city { flex: 1; }
+  .lid-city-name { font-size: 12px; font-weight: 500; color: var(--text); }
+  .lid-city-sub { font-size: 10px; color: var(--muted); }
+  .lid-bar-wrap { width: 90px; }
+  .lid-bar-track { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+  .lid-bar-fill { height: 100%; border-radius: 3px; background: var(--fuchsia); }
+  .lid-count { font-size: 12px; font-weight: 600; color: var(--fuchsia); width: 28px; text-align: right; flex-shrink: 0; }
+  .lid-pct { font-size: 10px; color: var(--muted); width: 32px; text-align: right; flex-shrink: 0; }
+  .lid-quotes { }
+  .lid-quote {
+    border-left: 3px solid var(--fuchsia);
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    background: #FFF0F5;
+    border-radius: 0 8px 8px 0;
+  }
+  .lid-quote-text { font-size: 11px; font-style: italic; color: var(--text); line-height: 1.5; margin-bottom: 4px; }
+  .lid-quote-meta { font-size: 10px; color: var(--muted); }
+  .lid-motivo-breakdown { margin-top: 14px; }
+  .lid-motivo-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .lid-motivo-label { font-size: 11px; color: var(--text); flex: 1; }
+  .lid-motivo-bar-track { width: 80px; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; flex-shrink: 0; }
+  .lid-motivo-bar-fill { height: 100%; border-radius: 4px; }
+  .lid-motivo-count { font-size: 11px; font-weight: 600; width: 24px; text-align: right; flex-shrink: 0; }
+  .score-ring { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 8px 12px; background: var(--bg); border-radius: 8px; }
+  .score-ring-val { font-size: 24px; font-weight: 600; }
+  .score-ring-lbl { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
+  /* RESPONSIVE */
+  @media (max-width: 1100px) {
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    .charts-row { grid-template-columns: 1fr 1fr; }
+    .bottom-row { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 700px) {
+    .main { padding: 12px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .charts-row, .bottom-row { grid-template-columns: 1fr; }
+    .header { padding: 0 12px; }
+    .filters-bar { padding: 8px 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo-badge">apparka</div>
+    <div class="header-title">Tablero de Ceses · Personal Operativo</div>
+  </div>
+  <div class="header-right">
+    <span class="last-update" id="lastUpdate">Cargando...</span>
+    <button class="reload-btn" onclick="loadData()">↻ Actualizar</button>
+  </div>
+</div>
+
+<div class="filters-bar">
+  <span class="filter-label">Filtrar por:</span>
+  <select id="filterMes"><option value="">Todos los meses</option></select>
+  <select id="filterTramo"><option value="">Todos los tramos</option></select>
+  <select id="filterMotivo"><option value="">Todos los motivos</option></select>
+  <select id="filterPuesto"><option value="">Todos los puestos</option></select>
+  <select id="filterGenero"><option value="">Todos los géneros</option></select>
+  <button class="clear-btn" onclick="clearFilters()">✕ Limpiar filtros</button>
+  <span class="results-count" id="resultsCount">—</span>
+</div>
+
+<div class="main">
+  <div id="loadingState" class="loading-overlay">
+    <div class="spinner"></div>
+    <div>Conectando con Google Sheets...</div>
+  </div>
+  <div id="errorState" style="display:none;"></div>
+  <div id="dashContent" style="display:none;">
+
+    <!-- INSIGHT BAR -->
+    <div class="insight-bar">
+      <div>
+        <div class="insight-title">📊 Insights clave del período filtrado</div>
+      </div>
+      <div class="insight-items" id="insightItems"></div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card danger">
+        <div class="kpi-label">Total salidas</div>
+        <div class="kpi-value" id="kpiTotal">—</div>
+        <div class="kpi-sub" id="kpiTotalSub">registros con encuesta</div>
+      </div>
+      <div class="kpi-card danger">
+        <div class="kpi-label">% Salidas tempranas</div>
+        <div class="kpi-value" id="kpiTemprana">—</div>
+        <div class="kpi-sub">≤ 3 meses de antigüedad</div>
+      </div>
+      <div class="kpi-card warn">
+        <div class="kpi-label">Causas controlables</div>
+        <div class="kpi-value" id="kpiControlable">—</div>
+        <div class="kpi-sub" id="kpiControlableSub">—</div>
+      </div>
+      <div class="kpi-card info">
+        <div class="kpi-label">Motivo #1</div>
+        <div class="kpi-value" id="kpiMotivo1" style="font-size:14px;line-height:1.3;margin-top:4px;">—</div>
+        <div class="kpi-sub" id="kpiMotivo1Sub">—</div>
+      </div>
+      <div class="kpi-card ok">
+        <div class="kpi-label">Score experiencia inicial</div>
+        <div class="kpi-value" id="kpiExp">—</div>
+        <div class="kpi-sub">promedio sobre 4.0</div>
+      </div>
+    </div>
+
+    <!-- CHARTS ROW 1 -->
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-card-title">Motivos de salida <span class="badge">top 8</span></div>
+        <canvas id="chartMotivos"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Antigüedad al cese <span class="badge badge-purple">por tramo</span></div>
+        <canvas id="chartTramos"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-card-title">Perfil etario <span class="badge badge-navy">género</span></div>
+        <canvas id="chartEdad"></canvas>
+      </div>
+    </div>
+
+    <!-- BOTTOM ROW -->
+    <div class="bottom-row">
+      <!-- CONTROLABLE -->
+      <div class="chart-card">
+        <div class="chart-card-title">Causas controlables vs no controlables <span class="badge">accionable</span></div>
+        <div class="metric-split">
+          <div class="metric-split-item">
+            <div class="metric-split-val" id="pctControl" style="color:var(--fuchsia);">—</div>
+            <div class="metric-split-lbl">Controlables</div>
+          </div>
+          <div class="metric-split-item">
+            <div class="metric-split-val" id="pctNoControl" style="color:var(--muted);">—</div>
+            <div class="metric-split-lbl">No controlables</div>
+          </div>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressControl" style="width:0%"></div></div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">
+          Controlables: supervisor, horario, expectativas, distancia, pagos, herramientas
+        </div>
+        <div id="controlList" style="font-size:11px;color:var(--text);"></div>
+      </div>
+
+      <!-- EXPERIENCIA INICIAL -->
+      <div class="chart-card">
+        <div class="chart-card-title">Experiencia inicial <span class="badge badge-purple">escala 1–4</span></div>
+        <div class="exp-grid" id="expGrid"></div>
+      </div>
+
+      <!-- SEMÁFORO MENSUAL -->
+      <div class="chart-card">
+        <div class="chart-card-title">Salidas por mes <span class="badge badge-navy">semáforo</span></div>
+        <table class="sem-table">
+          <thead><tr><th>Mes</th><th>Salidas</th><th>% Temp.</th><th>Estado</th></tr></thead>
+          <tbody id="semTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- LIDERAZGO SECTION -->
+    <div class="liderazgo-section">
+      <div class="liderazgo-header">
+        <div>
+          <div class="chart-card-title" style="margin:0;">
+            ⚠️ Radar de liderazgo · Ciudades y distritos críticos
+            <span class="badge" style="background:var(--fuchsia);">foco de acción</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">
+            Salidas atribuibles a problemas de supervisión, cambios de horario no consultados y trato inadecuado
+          </div>
+        </div>
+        <div id="lidTotalBadge" style="font-size:11px;color:var(--muted);"></div>
+      </div>
+
+      <div class="liderazgo-kpis">
+        <div class="lid-kpi">
+          <div class="lid-kpi-val" id="lidTotal">—</div>
+          <div class="lid-kpi-lbl">Casos de liderazgo</div>
+        </div>
+        <div class="lid-kpi">
+          <div class="lid-kpi-val" id="lidPct">—</div>
+          <div class="lid-kpi-lbl">% del total de salidas</div>
+        </div>
+        <div class="lid-kpi">
+          <div class="lid-kpi-val" id="lidCiudad1">—</div>
+          <div class="lid-kpi-lbl">Ciudad/distrito #1</div>
+        </div>
+        <div class="lid-kpi">
+          <div class="lid-kpi-val" id="lidScoreSup" style="color:var(--warn);">—</div>
+          <div class="lid-kpi-lbl">Score trato supervisor (1–4)</div>
+        </div>
+        <div class="lid-kpi">
+          <div class="lid-kpi-val" id="lidScoreCom" style="color:var(--warn);">—</div>
+          <div class="lid-kpi-lbl">Score comunicación jefe (1–4)</div>
+        </div>
+      </div>
+
+      <div class="liderazgo-grid">
+        <!-- RANKING CIUDADES -->
+        <div class="lid-ranking">
+          <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:8px;">Ranking por ciudad / distrito</div>
+          <div id="lidRanking"></div>
+        </div>
+
+        <!-- MOTIVOS + QUOTES -->
+        <div class="lid-quotes">
+          <div style="font-size:11px;font-weight:600;color:var(--text);margin-bottom:8px;">Desglose de motivos de liderazgo</div>
+          <div class="lid-motivo-breakdown" id="lidMotivoBreakdown"></div>
+          <div style="font-size:11px;font-weight:600;color:var(--text);margin:12px 0 8px;">Testimonios directos</div>
+          <div id="lidQuotesFeed"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- QUOTES SECTION -->
+    <div class="quotes-section">
+      <div class="quotes-header">
+        <div class="chart-card-title" style="margin:0;">Voces de los colaboradores <span class="badge">respuestas abiertas</span></div>
+        <div style="font-size:11px;color:var(--muted);" id="quotesCount"></div>
+      </div>
+      <div id="quotesFeed"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — ID del Google Sheet de Encuesta de Salida 2026
+// ============================================================
+const SHEET_ID = '11d7t7mt8TfUAdTfeStriNLarrZ7lLjEEY1OzyNS86bM';
+const SHEET_NAME = 'Respuestas de formulario 1';
+
+// Causas consideradas CONTROLABLES por Apparka
+const CONTROLABLES = [
+  'Problemas con el supervisor/administrador',
+  'Cambiaron mi horario (no consultado)',
+  'Turno asignado no compatible con mis horarios',
+  'El trabajo no cumplió mis expectativas',
+  'Distancia o ubicación de la playa asignada',
+  'Problemas con mis pagos',
+  'Condiciones de la playa (falta sombrillas, sillas, etc.)',
+  'Falta de herramientas (uniformes, agua, bloqueador, radio, etc.)',
+  'Falta de entrenamiento inicial',
+  'Problemas con compañeros'
+];
+
+const TRAMO_ORDER = [
+  'Menos de 1 mes','De 1 a 2 meses','De 2 a 4 meses',
+  'De 4 a 6 meses','De 6 meses a 1 año','Más de 1 año'
+];
+
+const MES_ORDER = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const MES_LABEL = {ene:'Ene',feb:'Feb',mar:'Mar',abr:'Abr',may:'May',jun:'Jun',jul:'Jul',ago:'Ago',sep:'Sep',oct:'Oct',nov:'Nov',dic:'Dic'};
+
+let allData = [];
+let charts = {};
+
+// ============================================================
+// LOAD DATA from Google Sheets public CSV export
+// ============================================================
+async function loadData() {
+  document.getElementById('loadingState').style.display = 'flex';
+  document.getElementById('dashContent').style.display = 'none';
+  document.getElementById('errorState').style.display = 'none';
+
+  try {
+    const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const csv = await resp.text();
+    allData = parseCSV(csv);
+    populateFilters();
+    document.getElementById('lastUpdate').textContent = 'Actualizado: ' + new Date().toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit'});
+    render();
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('dashContent').style.display = 'block';
+  } catch (e) {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('errorState').style.display = 'block';
+    document.getElementById('errorState').innerHTML = `
+      <div class="error-msg">
+        ⚠️ No se pudo cargar la data. Asegúrate de que el Sheet sea público (cualquiera con el enlace puede ver).<br>
+        <small>${e.message}</small><br><br>
+        <strong>Cómo hacerlo:</strong> Archivo → Compartir → Configuración de acceso → Cualquier persona con el enlace → Lector.
+      </div>`;
+  }
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = parseCSVLine(lines[0]);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = parseCSVLine(lines[i]);
+    if (vals.length < 5) continue;
+    const row = {};
+    headers.forEach((h, idx) => { row[h] = (vals[idx] || '').trim(); });
+    rows.push(row);
+  }
+  return rows;
+}
+
+function parseCSVLine(line) {
+  const result = []; let cur = ''; let inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else { cur += c; }
+  }
+  result.push(cur);
+  return result;
+}
+
+// ============================================================
+// FILTERS
+// ============================================================
+function getHeaders() {
+  if (!allData.length) return {};
+  const h = Object.keys(allData[0]);
+  return {
+    mes: h.find(k => k.toLowerCase().includes('mes') && !k.includes('¿')) || 'Mes',
+    tramo: h.find(k => k.toLowerCase().includes('tramo')) || 'Tramo',
+    motivo: h.find(k => k.toLowerCase().includes('motivo') && k.includes('principal')) || h.find(k => k.toLowerCase().includes('motivo')),
+    puesto: h.find(k => k.toLowerCase().includes('puesto')) || '¿Qué puesto ocupaste?',
+    genero: h.find(k => k.toLowerCase().includes('género') || k.toLowerCase().includes('genero')) || '¿Con qué género te identificas?',
+    edad: h.find(k => k.toLowerCase().includes('edad') || k.toLowerCase().includes('rango')) || '¿A qué rango de edad perteneces?',
+    temprana: h.find(k => k.toLowerCase().includes('permanencia') || k.toLowerCase().includes('temprana')) || 'Tiempo de permanencia',
+    playa: h.find(k => k.toLowerCase().includes('playa') || k.toLowerCase().includes('operación')) || 'Playa/Operación',
+    ciudad: h.find(k => k.toLowerCase().includes('ciudad')) || 'Ciudad',
+    detalle: h.find(k => k.toLowerCase().includes('decidiste') || k.toLowerCase().includes('cuéntanos')) || h.find(k => k.toLowerCase().includes('detalle')),
+    cambio: h.find(k => k.toLowerCase().includes('cambio concreto') || k.toLowerCase().includes('permanezcas')) || h.find(k => k.toLowerCase().includes('cambio')),
+    exp1: h.find(k => k.includes('Entendí claramente')),
+    exp2: h.find(k => k.includes('capacitación necesaria')),
+    exp3: h.find(k => k.includes('uniforme y herramientas')),
+    exp4: h.find(k => k.includes('ritmo de trabajo')),
+    exp5: h.find(k => k.includes('trato de mi supervisor') || k.includes('trato de mi jefe')),
+    exp6: h.find(k => k.includes('comunicación con mi jefe')),
+    exp7: h.find(k => k.includes('apoyado por mis compañero')),
+  };
+}
+
+function populateFilters() {
+  const H = getHeaders();
+  const fillSelect = (id, key) => {
+    const sel = document.getElementById(id);
+    const vals = [...new Set(allData.map(r => r[key]).filter(Boolean))].sort();
+    vals.forEach(v => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      sel.appendChild(o);
+    });
+  };
+  fillSelect('filterMes', H.mes);
+  fillSelect('filterTramo', H.tramo);
+  fillSelect('filterMotivo', H.motivo);
+  fillSelect('filterPuesto', H.puesto);
+  fillSelect('filterGenero', H.genero);
+  ['filterMes','filterTramo','filterMotivo','filterPuesto','filterGenero'].forEach(id => {
+    document.getElementById(id).onchange = render;
+  });
+}
+
+function getFiltered() {
+  const H = getHeaders();
+  const mes = document.getElementById('filterMes').value;
+  const tramo = document.getElementById('filterTramo').value;
+  const motivo = document.getElementById('filterMotivo').value;
+  const puesto = document.getElementById('filterPuesto').value;
+  const genero = document.getElementById('filterGenero').value;
+  return allData.filter(r =>
+    (!mes || r[H.mes] === mes) &&
+    (!tramo || r[H.tramo] === tramo) &&
+    (!motivo || r[H.motivo] === motivo) &&
+    (!puesto || r[H.puesto] === puesto) &&
+    (!genero || r[H.genero] === genero)
+  );
+}
+
+function clearFilters() {
+  ['filterMes','filterTramo','filterMotivo','filterPuesto','filterGenero'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  render();
+}
+
+// ============================================================
+// COUNT HELPER
+// ============================================================
+function countBy(arr, key) {
+  const map = {};
+  arr.forEach(r => {
+    const v = r[key] || '(sin dato)';
+    map[v] = (map[v] || 0) + 1;
+  });
+  return map;
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function render() {
+  const data = getFiltered();
+  const H = getHeaders();
+  document.getElementById('resultsCount').textContent = data.length + ' registros';
+
+  // KPIs
+  const total = data.length;
+  const tempranas = data.filter(r => r[H.temprana] === 'Temprana').length;
+  const pctTemp = total ? Math.round(tempranas / total * 100) : 0;
+
+  const controlables = data.filter(r => CONTROLABLES.includes(r[H.motivo]));
+  const pctCtrl = total ? Math.round(controlables.length / total * 100) : 0;
+
+  const motivoCount = countBy(data, H.motivo);
+  const topMotivo = Object.entries(motivoCount).sort((a,b) => b[1]-a[1])[0] || ['—', 0];
+
+  // Experiencia inicial promedio
+  const expKeys = [H.exp1,H.exp2,H.exp3,H.exp4,H.exp5,H.exp6,H.exp7].filter(Boolean);
+  let expSum = 0; let expN = 0;
+  data.forEach(r => {
+    expKeys.forEach(k => {
+      const v = parseFloat(r[k]);
+      if (!isNaN(v)) { expSum += v; expN++; }
+    });
+  });
+  const expAvg = expN ? (expSum / expN).toFixed(2) : '—';
+
+  document.getElementById('kpiTotal').textContent = total;
+  document.getElementById('kpiTemprana').textContent = pctTemp + '%';
+  document.getElementById('kpiControlable').textContent = pctCtrl + '%';
+  document.getElementById('kpiControlableSub').textContent = controlables.length + ' casos accionables';
+  document.getElementById('kpiMotivo1').textContent = topMotivo[0];
+  document.getElementById('kpiMotivo1Sub').textContent = topMotivo[1] + ' casos · ' + (total ? Math.round(topMotivo[1]/total*100) : 0) + '% del total';
+  document.getElementById('kpiExp').textContent = expAvg;
+
+  // INSIGHTS
+  const insights = [];
+  if (pctTemp >= 35) insights.push(`<strong>${pctTemp}%</strong> de salidas ocurre antes de los 3 meses — revisar onboarding y primeras semanas`);
+  if (pctCtrl >= 40) insights.push(`El <strong>${pctCtrl}%</strong> de causas son controlables → <strong>${controlables.length}</strong> casos accionables internamente`);
+  const supProblema = data.filter(r => r[H.motivo] === 'Problemas con el supervisor/administrador').length;
+  if (supProblema > 0) insights.push(`<strong>${supProblema}</strong> salidas por problemas con supervisor/administrador — señal de liderazgo`);
+  const horario = data.filter(r => r[H.motivo] === 'Cambiaron mi horario (no consultado)').length;
+  if (horario > 0) insights.push(`<strong>${horario}</strong> casos por cambio de horario no consultado — causa evitable`);
+  if (!insights.length) insights.push(`<strong>${total}</strong> registros cargados del formulario de encuesta de salida`);
+
+  document.getElementById('insightItems').innerHTML = insights.map(i =>
+    `<div class="insight-item"><div class="insight-dot"></div><div class="insight-text">${i}</div></div>`
+  ).join('');
+
+  // CAUSAS CONTROLABLES
+  document.getElementById('pctControl').textContent = pctCtrl + '%';
+  document.getElementById('pctNoControl').textContent = (100 - pctCtrl) + '%';
+  document.getElementById('progressControl').style.width = pctCtrl + '%';
+  const ctrlMotivos = countBy(controlables, H.motivo);
+  const ctrlSorted = Object.entries(ctrlMotivos).sort((a,b) => b[1]-a[1]).slice(0,5);
+  document.getElementById('controlList').innerHTML = ctrlSorted.map(([m,n]) =>
+    `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:10px;color:var(--muted);">${m}</span>
+      <span style="font-size:11px;font-weight:600;color:var(--fuchsia);">${n}</span>
+    </div>`
+  ).join('');
+
+  // EXPERIENCIA INICIAL
+  const expDims = [
+    { label: 'Entendí mis funciones', key: H.exp1 },
+    { label: 'Recibí capacitación', key: H.exp2 },
+    { label: 'Uniforme y herramientas', key: H.exp3 },
+    { label: 'Ritmo de trabajo', key: H.exp4 },
+    { label: 'Trato del supervisor', key: H.exp5 },
+    { label: 'Comunicación con jefe', key: H.exp6 },
+    { label: 'Apoyo de compañeros', key: H.exp7 },
+  ].filter(d => d.key);
+
+  document.getElementById('expGrid').innerHTML = expDims.map(d => {
+    const vals = data.map(r => parseFloat(r[d.key])).filter(v => !isNaN(v));
+    const avg = vals.length ? (vals.reduce((a,b) => a+b, 0) / vals.length) : 0;
+    const pct = (avg / 4) * 100;
+    const color = avg >= 3 ? 'var(--success)' : avg >= 2 ? 'var(--warn)' : 'var(--danger)';
+    return `<div class="exp-row">
+      <div class="exp-label">${d.label}</div>
+      <div class="exp-track"><div class="exp-fill" style="width:${pct.toFixed(0)}%;background:${color};"></div></div>
+      <div class="exp-val" style="color:${color};">${avg.toFixed(1)}</div>
+    </div>`;
+  }).join('');
+
+  // SEMÁFORO MENSUAL
+  const mesCounts = countBy(data, H.mes);
+  const mesTempranas = {};
+  MES_ORDER.forEach(m => { mesTempranas[m] = 0; });
+  data.forEach(r => {
+    if (r[H.temprana] === 'Temprana' && r[H.mes]) mesTempranas[r[H.mes]] = (mesTempranas[r[H.mes]] || 0) + 1;
+  });
+  const mesRows = MES_ORDER.filter(m => mesCounts[m] > 0).map(m => {
+    const cnt = mesCounts[m] || 0;
+    const tmp = mesTempranas[m] || 0;
+    const pct = cnt ? Math.round(tmp / cnt * 100) : 0;
+    const pill = pct >= 50 ? 'pill-red' : pct >= 35 ? 'pill-amber' : 'pill-green';
+    const label = pct >= 50 ? 'Crítico' : pct >= 35 ? 'Alerta' : 'OK';
+    return `<tr>
+      <td>${MES_LABEL[m] || m}</td>
+      <td><strong>${cnt}</strong></td>
+      <td>${pct}%</td>
+      <td><span class="pill ${pill}">${label}</span></td>
+    </tr>`;
+  });
+  document.getElementById('semTable').innerHTML = mesRows.join('') || '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:12px;">Sin datos</td></tr>';
+
+  // QUOTES
+  const quotedData = data.filter(r => r[H.detalle] && r[H.detalle].length > 20);
+  const sample = quotedData.sort(() => 0.5 - Math.random()).slice(0, 8);
+  document.getElementById('quotesCount').textContent = quotedData.length + ' respuestas con detalle';
+  document.getElementById('quotesFeed').innerHTML = sample.map(r => {
+    const motivo = r[H.motivo] || '';
+    const playa = r[H.playa] || '';
+    const tramo = r[H.tramo] || '';
+    return `<div class="quote-item">
+      <div class="quote-text">"${r[H.detalle]}"</div>
+      <div class="quote-meta">
+        <span class="quote-motivo">${motivo}</span>
+        ${playa ? `<span>${playa}</span> · ` : ''}
+        <span>${tramo}</span>
+      </div>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:12px;">Sin respuestas abiertas con los filtros actuales.</div>';
+
+  // CAUSAS DE LIDERAZGO
+  const LIDERAZGO_MOTIVOS = [
+    'Problemas con el supervisor/administrador',
+    'Cambiaron mi horario (no consultado)',
+    'Problemas con compañeros',
+  ];
+
+  const lidData = data.filter(r => LIDERAZGO_MOTIVOS.includes(r[H.motivo]));
+  const lidTotal = lidData.length;
+  const lidPct = total ? Math.round(lidTotal / total * 100) : 0;
+
+  // KPIs liderazgo
+  document.getElementById('lidTotal').textContent = lidTotal;
+  document.getElementById('lidPct').textContent = lidPct + '%';
+
+  // Score supervisor y comunicación en casos de liderazgo (vs total)
+  const calcAvg = (arr, key) => {
+    const vals = arr.map(r => parseFloat(r[key])).filter(v => !isNaN(v));
+    return vals.length ? (vals.reduce((a,b) => a+b,0)/vals.length).toFixed(2) : '—';
+  };
+  const scoreSup = H.exp5 ? calcAvg(lidData, H.exp5) : '—';
+  const scoreCom = H.exp6 ? calcAvg(lidData, H.exp6) : '—';
+  document.getElementById('lidScoreSup').textContent = scoreSup;
+  document.getElementById('lidScoreCom').textContent = scoreCom;
+
+  // Ranking ciudades
+  const ciudadKey = H.ciudad || H.playa;
+  const ciudadCount = countBy(lidData, ciudadKey);
+  const ciudadSorted = Object.entries(ciudadCount)
+    .filter(([k]) => k && k !== '(sin dato)')
+    .sort((a,b) => b[1]-a[1]);
+
+  document.getElementById('lidCiudad1').textContent = ciudadSorted[0] ? ciudadSorted[0][0] : '—';
+  document.getElementById('lidTotalBadge').textContent = ciudadSorted.length + ' ciudades/distritos afectados';
+
+  const maxCiudad = ciudadSorted[0] ? ciudadSorted[0][1] : 1;
+  document.getElementById('lidRanking').innerHTML = ciudadSorted.slice(0, 12).map(([city, cnt], i) => {
+    const pctCity = lidTotal ? Math.round(cnt / lidTotal * 100) : 0;
+    const barW = Math.round(cnt / maxCiudad * 100);
+    // también buscar el motivo más frecuente en esa ciudad
+    const cityRows = lidData.filter(r => r[ciudadKey] === city);
+    const cityMotivos = countBy(cityRows, H.motivo);
+    const topCityMotivo = Object.entries(cityMotivos).sort((a,b)=>b[1]-a[1])[0];
+    const motivoShort = topCityMotivo ? topCityMotivo[0].replace('Problemas con el supervisor/administrador','Prob. supervisor').replace('Cambiaron mi horario (no consultado)','Cambio horario').replace('Problemas con compañeros','Prob. compañeros') : '';
+    return `<div class="lid-rank-row">
+      <div class="lid-rank-num ${i < 3 ? 'top' : ''}">${i + 1}</div>
+      <div class="lid-city">
+        <div class="lid-city-name">${city}</div>
+        ${motivoShort ? `<div class="lid-city-sub">${motivoShort}</div>` : ''}
+      </div>
+      <div class="lid-bar-wrap">
+        <div class="lid-bar-track"><div class="lid-bar-fill" style="width:${barW}%"></div></div>
+      </div>
+      <div class="lid-count">${cnt}</div>
+      <div class="lid-pct">${pctCity}%</div>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:12px;padding:12px 0;">Sin datos con los filtros actuales.</div>';
+
+  // Desglose motivos de liderazgo
+  const lidMotivoCount = countBy(lidData, H.motivo);
+  const lidMotivoSorted = Object.entries(lidMotivoCount).sort((a,b)=>b[1]-a[1]);
+  const maxLidMotivo = lidMotivoSorted[0] ? lidMotivoSorted[0][1] : 1;
+  const motColorMap = {
+    'Problemas con el supervisor/administrador': '#ED2579',
+    'Cambiaron mi horario (no consultado)': '#8A34B4',
+    'Problemas con compañeros': '#1B1462',
+  };
+  document.getElementById('lidMotivoBreakdown').innerHTML = lidMotivoSorted.map(([m, n]) => {
+    const barW = Math.round(n / maxLidMotivo * 100);
+    const color = motColorMap[m] || '#888';
+    const pctM = lidTotal ? Math.round(n / lidTotal * 100) : 0;
+    return `<div class="lid-motivo-row">
+      <div class="lid-motivo-label">${m}</div>
+      <div class="lid-motivo-bar-track"><div class="lid-motivo-bar-fill" style="width:${barW}%;background:${color};"></div></div>
+      <div class="lid-motivo-count" style="color:${color};">${n}</div>
+      <div style="font-size:10px;color:var(--muted);width:28px;text-align:right;">${pctM}%</div>
+    </div>`;
+  }).join('');
+
+  // Testimonios de liderazgo (respuestas abiertas con detalle)
+  const lidWithDetail = lidData.filter(r => r[H.detalle] && r[H.detalle].length > 20);
+  const lidSample = lidWithDetail.sort(() => 0.5 - Math.random()).slice(0, 4);
+  document.getElementById('lidQuotesFeed').innerHTML = lidSample.map(r => {
+    const ciudad = r[ciudadKey] || '';
+    const tramo = r[H.tramo] || '';
+    const motivo = r[H.motivo] || '';
+    return `<div class="lid-quote">
+      <div class="lid-quote-text">"${r[H.detalle]}"</div>
+      <div class="lid-quote-meta">${ciudad}${ciudad && tramo ? ' · ' : ''}${tramo}</div>
+    </div>`;
+  }).join('') || '<div style="color:var(--muted);font-size:11px;">Sin testimonios con detalle.</div>';
+
+  // CHARTS
+  renderCharts(data, H, motivoCount);
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function renderCharts(data, H, motivoCount) {
+  destroyCharts();
+
+  // MOTIVOS
+  const motivosSorted = Object.entries(motivoCount)
+    .filter(([k]) => k !== '(sin dato)')
+    .sort((a,b) => b[1]-a[1]).slice(0,8);
+  const isControlable = k => CONTROLABLES.includes(k);
+  charts.motivos = new Chart(document.getElementById('chartMotivos'), {
+    type: 'bar',
+    data: {
+      labels: motivosSorted.map(([k]) => k.length > 30 ? k.slice(0,30)+'…' : k),
+      datasets: [{
+        data: motivosSorted.map(([,v]) => v),
+        backgroundColor: motivosSorted.map(([k]) => isControlable(k) ? '#ED2579' : '#1B1462'),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false }, tooltip: {
+        callbacks: { title: (items) => motivosSorted[items[0].dataIndex][0] }
+      }},
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { family: 'Poppins', size: 10 } } },
+        y: { grid: { display: false }, ticks: { font: { family: 'Poppins', size: 10 } } }
+      },
+      responsive: true,
+      maintainAspectRatio: true,
+    }
+  });
+
+  // TRAMOS
+  const tramoCnt = countBy(data, H.tramo);
+  const tramoLabels = TRAMO_ORDER.filter(t => tramoCnt[t]);
+  const tramoVals = tramoLabels.map(t => tramoCnt[t] || 0);
+  const maxTramo = Math.max(...tramoVals);
+  charts.tramos = new Chart(document.getElementById('chartTramos'), {
+    type: 'bar',
+    data: {
+      labels: tramoLabels.map(t => t.replace('De ','').replace(' meses','m').replace(' mes','m').replace(' años','a').replace(' año','a').replace('Menos de','<').replace('Más de','>+')),
+      datasets: [{
+        data: tramoVals,
+        backgroundColor: tramoVals.map((v,i) => {
+          const t = tramoLabels[i];
+          return (t === 'De 2 a 4 meses' || t === 'Menos de 1 mes') ? '#ED2579' : '#8A34B4';
+        }),
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { family: 'Poppins', size: 10 } } },
+        y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { family: 'Poppins', size: 10 } } }
+      },
+      responsive: true,
+      maintainAspectRatio: true,
+    }
+  });
+
+  // EDAD + GÉNERO
+  const edadOrder = ['Menos de 22 años','22 - 30 años','31 - 40 años','41 - 50 años','Más de 50 años'];
+  const edadData = {};
+  edadOrder.forEach(e => { edadData[e] = { M: 0, F: 0, O: 0 }; });
+  data.forEach(r => {
+    const e = r[H.edad]; const g = r[H.genero] || '';
+    if (edadData[e]) {
+      if (g === 'Masculino') edadData[e].M++;
+      else if (g === 'Femenino') edadData[e].F++;
+      else edadData[e].O++;
+    }
+  });
+  const edadLabels = edadOrder.filter(e => edadData[e] && (edadData[e].M + edadData[e].F + edadData[e].O > 0));
+  charts.edad = new Chart(document.getElementById('chartEdad'), {
+    type: 'bar',
+    data: {
+      labels: edadLabels.map(e => e.replace(' años','')),
+      datasets: [
+        { label: 'Masc.', data: edadLabels.map(e => edadData[e].M), backgroundColor: '#1B1462', borderRadius: 3 },
+        { label: 'Fem.', data: edadLabels.map(e => edadData[e].F), backgroundColor: '#ED2579', borderRadius: 3 },
+      ]
+    },
+    options: {
+      plugins: { legend: { position: 'bottom', labels: { font: { family: 'Poppins', size: 10 }, boxWidth: 12 } } },
+      scales: {
+        x: { stacked: false, grid: { display: false }, ticks: { font: { family: 'Poppins', size: 10 } } },
+        y: { stacked: false, grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { font: { family: 'Poppins', size: 10 } } }
+      },
+      responsive: true,
+      maintainAspectRatio: true,
+    }
+  });
+}
+
+function destroyCharts() {
+  Object.values(charts).forEach(c => c.destroy());
+  charts = {};
+}
+
+// ============================================================
+// INIT
+// ============================================================
+loadData();
+</script>
+</body>
+</html>
